@@ -302,7 +302,7 @@ export default {
     titleA: "Una casa impeccabile,",
     titleHighlight: "senza muovere un dito",
     subtitle:
-      "Prenota un professionista delle pulizie selezionato e assicurato per la tua casa o il tuo ufficio in circa 60 secondi. Prezzi trasparenti, la tua lingua parlata e ogni visita coperta dalla nostra Garanzia Impeccabile.",
+      "Prenota un professionista delle pulizie selezionato e assicurato per la tua casa o il tuo ufficio in circa 60 secondi. Prezzi trasparenti e ogni visita coperta dalla nostra Garanzia Impeccabile. Parliamo la tua lingua.",
     ctaPrimary: "Prenota una pulizia",
     ctaSecondary: "Scopri come funziona",
     ratingText: "da oltre 1.280 clienti",
