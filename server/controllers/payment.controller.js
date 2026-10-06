@@ -188,6 +188,7 @@ const promotePendingBooking = async (paymentIntentId, paymentIntent = null) => {
       customerName: d.customerName,
       customerEmail: d.customerEmail,
       customerPhone: d.customerPhone,
+      customerPersonalId: d.customerPersonalId,
       streetName: d.streetName,
       houseNumber: d.houseNumber,
       propertySize: d.propertySize,

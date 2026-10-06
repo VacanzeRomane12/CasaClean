@@ -616,3 +616,82 @@ describe("saved-card management", () => {
         expect(stripeMock.paymentMethods.detach).not.toHaveBeenCalled();
     });
 });
+
+// A personal ID number has the phone's posture: optional on the ACCOUNT,
+// required for the BOOKING. The booking carries it when the profile does not,
+// and is refused - before any Stripe call - when neither does.
+describe("POST /api/v1/payment/booking/intent - personal ID", () => {
+    test("refuses the booking when neither the request nor the profile carries an ID", async () => {
+        const user = await createUser({ personalId: "" });
+        const service = await createService();
+        const city = await createCity();
+        mockCustomerCreate();
+        mockIntentCreate();
+
+        const res = await api.post("/api/v1/payment/booking/intent")
+            .set("Cookie", cookieFor(user))
+            .send(validBookingBody(service, city));
+
+        expect(res.status).toBe(400);
+        expect(res.body.message).toMatch(/personal id/i);
+        expect(stripeMock.paymentIntents.create).not.toHaveBeenCalled();
+        expect(await PendingBooking.countDocuments()).toBe(0);
+    });
+
+    test("takes the ID from the request, normalised, when the profile has none", async () => {
+        const user = await createUser({ personalId: "" });
+        const service = await createService();
+        const city = await createCity();
+        mockCustomerCreate();
+        mockIntentCreate();
+
+        const res = await api.post("/api/v1/payment/booking/intent")
+            .set("Cookie", cookieFor(user))
+            .send(validBookingBody(service, city, { customerPersonalId: "rss mra 85m01 h501u" }));
+
+        expect(res.status).toBe(201);
+        const pending = await PendingBooking.findOne({ paymentIntentId: "pi_test_1" });
+        expect(pending.draft.customerPersonalId).toBe("RSSMRA85M01H501U");
+    });
+
+    test("falls back to the profile ID and snapshots it onto the promoted booking", async () => {
+        const user = await createUser({ personalId: "01001012345" });
+        const service = await createService({ pricePerHour: 20 });
+        const city = await createCity();
+        mockCustomerCreate();
+        mockIntentCreate();
+
+        const intent = await api.post("/api/v1/payment/booking/intent")
+            .set("Cookie", cookieFor(user))
+            .send(validBookingBody(service, city));
+        expect(intent.status).toBe(201);
+
+        stripeMock.paymentIntents.retrieve.mockResolvedValue({
+            id: intent.body.data.paymentIntentId,
+            status: "succeeded",
+            amount: toMinorUnits(intent.body.data.amount),
+            customer: null
+        });
+        const finalize = await api.post("/api/v1/payment/booking/finalize")
+            .set("Cookie", cookieFor(user))
+            .send({ paymentIntentId: intent.body.data.paymentIntentId });
+        expect(finalize.status).toBe(201);
+        expect(finalize.body.data.booking.customerPersonalId).toBe("01001012345");
+
+        const booking = await Booking.findOne({ paymentIntentId: intent.body.data.paymentIntentId });
+        expect(booking.customerPersonalId).toBe("01001012345");
+    });
+
+    test("rejects a malformed ID at validation", async () => {
+        const user = await createUser();
+        const service = await createService();
+        const city = await createCity();
+
+        const res = await api.post("/api/v1/payment/booking/intent")
+            .set("Cookie", cookieFor(user))
+            .send(validBookingBody(service, city, { customerPersonalId: "id#1" }));
+
+        expect(res.status).toBe(400);
+        expect(stripeMock.paymentIntents.create).not.toHaveBeenCalled();
+    });
+});

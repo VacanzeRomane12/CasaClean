@@ -60,6 +60,7 @@ const seedPendingBooking = async (paymentIntentId) => {
             customerName: user.fullname,
             customerEmail: user.email,
             customerPhone: user.phone,
+            customerPersonalId: user.personalId,
             streetName: "Via Roma",
             houseNumber: "12",
             propertySize: "80",

@@ -78,6 +78,58 @@ const getNextSchedule = (serviceDate, intervalDays) => {
   };
 };
 
+// The widest date range a single occurrence projection may span. The admin
+// calendar shows at most six padded weeks, so 62 days covers any month view;
+// the cap exists so no caller can ask for an unbounded expansion.
+const MAX_OCCURRENCE_SPAN_DAYS = 62;
+
+/**
+ * Project the upcoming visits of one recurring plan inside a date range,
+ * WITHOUT writing anything.
+ *
+ * A plan stores one rule (intervalDays) and a single forward pointer
+ * (nextServiceDate, the first date NOT yet charged — markCycleSucceeded moves
+ * it past every charged cycle), and a Booking document exists for a cycle only
+ * once its charge has succeeded, which runs CHARGE_LEAD_DAYS before the visit.
+ * The calendar therefore cannot read later occurrences from the bookings
+ * collection; it asks for them here instead. Because the walk starts at the
+ * first uncharged date, a projected date can never coincide with a charged
+ * cycle's Booking, which is what keeps the calendar free of duplicates.
+ *
+ * Dates before today are skipped: an active plan whose nextServiceDate has
+ * slipped into the past is paused by the next charge sweep (cycle_missed), and
+ * until then it must not paint the calendar's past.
+ *
+ * The arithmetic is addDaysToDateString — the same local-calendar maths the
+ * charge worker advances the schedule with — so DST and month ends land on the
+ * dates the worker will actually use.
+ *
+ * @param {Object} subscription a lean/hydrated Subscription (status is NOT
+ *   checked here — the caller selects active plans)
+ * @param {string} from "YYYY-MM-DD", inclusive
+ * @param {string} to   "YYYY-MM-DD", inclusive
+ * @returns {string[]} service dates inside [max(from, today), to], ascending
+ */
+const projectOccurrences = (subscription, from, to) => {
+  const intervalDays = Number(subscription?.intervalDays);
+  const start = subscription?.nextServiceDate;
+  if (!isValidIntervalDays(intervalDays) || typeof start !== 'string' || !from || !to || to < from) {
+    return [];
+  }
+
+  const floor = from > todayString() ? from : todayString();
+  // Bounded by construction: a daily plan over the widest span is 63 dates.
+  const maxCount = Math.floor(MAX_OCCURRENCE_SPAN_DAYS / intervalDays) + 1;
+
+  const dates = [];
+  let date = start;
+  for (let i = 0; date <= to && i <= maxCount; i += 1) {
+    if (date >= floor) dates.push(date);
+    date = addDaysToDateString(date, intervalDays);
+  }
+  return dates;
+};
+
 const pushChargeAttempt = (attempt) => ({
   $push: {
     chargeAttempts: {
@@ -190,6 +242,7 @@ const sendCycleReceipt = ({ subscription, booking, serviceName, serviceDate, amo
           customerName: subscription.customerName,
           customerEmail: subscription.customerEmail,
           customerPhone: subscription.customerPhone,
+          customerPersonalId: subscription.customerPersonalId,
           streetName: subscription.streetName,
           houseNumber: subscription.houseNumber,
           propertySize: subscription.propertySize,
@@ -264,6 +317,7 @@ const createSubscriptionFromFirstBooking = async ({ pending, booking, paymentInt
       customerName: draft.customerName,
       customerEmail: draft.customerEmail,
       customerPhone: draft.customerPhone,
+      customerPersonalId: draft.customerPersonalId,
       streetName: draft.streetName,
       houseNumber: draft.houseNumber,
       propertySize: draft.propertySize,
@@ -331,7 +385,9 @@ const priceSubscriptionCycle = async (subscription) => {
     resolveCleaningTools(subscription.cleaningTools, service),
     subscription.user
       ? User.findById(subscription.user)
-          .select('customerType vatNumber vatStatus companyName')
+          // `personalId` rides along so a plan created before the field
+          // existed can stamp the customer's current number on each cycle.
+          .select('customerType vatNumber vatStatus companyName personalId')
           .lean()
       : null
   ]);
@@ -348,7 +404,7 @@ const priceSubscriptionCycle = async (subscription) => {
 
   const { totalAmount, tax } = priceForCustomer(netTotal, customer);
 
-  return { service, city, specialRequests, cleaningTools, totalAmount, tax };
+  return { service, city, specialRequests, cleaningTools, totalAmount, tax, customer };
 };
 
 // Create a paid cycle booking directly. There is no PendingBooking for an
@@ -361,10 +417,16 @@ const createBookingFromSubscription = async ({
   totalAmount,
   tax,
   specialRequests,
-  cleaningTools
+  cleaningTools,
+  customer
 }) => {
   const existing = await Booking.findOne({ paymentIntentId: paymentIntent.id });
   if (existing) return existing;
+
+  // The plan's snapshot wins; a legacy plan with none falls back to the
+  // customer's current profile value (read by priceSubscriptionCycle), so
+  // adding the number to the profile is enough to get it onto future cycles.
+  const customerPersonalId = subscription.customerPersonalId || customer?.personalId;
 
   try {
     return await Booking.create({
@@ -374,6 +436,7 @@ const createBookingFromSubscription = async ({
       customerName: subscription.customerName,
       customerEmail: subscription.customerEmail,
       customerPhone: subscription.customerPhone,
+      ...(customerPersonalId ? { customerPersonalId } : {}),
       streetName: subscription.streetName,
       houseNumber: subscription.houseNumber,
       propertySize: subscription.propertySize,
@@ -716,7 +779,8 @@ const chargeSubscriptionCycle = async (subscription) => {
       totalAmount: priced.totalAmount,
       tax: priced.tax,
       specialRequests: priced.specialRequests,
-      cleaningTools: priced.cleaningTools
+      cleaningTools: priced.cleaningTools,
+      customer: priced.customer
     });
 
     const advanced = await markCycleSucceeded({
@@ -838,6 +902,8 @@ module.exports = {
   renderSubscriptionCancelledEmail,
   sendBestEffortEmail,
   getNextSchedule,
+  projectOccurrences,
+  MAX_OCCURRENCE_SPAN_DAYS,
   getChargeLeadDays,
   getMaxAttempts,
   formatEuro

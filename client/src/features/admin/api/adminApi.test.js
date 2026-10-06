@@ -110,3 +110,45 @@ describe("admin list pagination", () => {
     });
   });
 });
+
+describe("subscriptionApi.occurrences", () => {
+  test("asks for exactly the given range and maps projections onto the calendar shape", async () => {
+    request.mockResolvedValueOnce({
+      occurrences: [
+        {
+          subscriptionId: "sub1",
+          bookingDate: "2026-11-02",
+          bookingTime: "10:00",
+          durationMinutes: 120,
+          cleaners: 1,
+          customerName: "Giorgi K.",
+          serviceId: { _id: "svc1", name: "Home Cleaning" },
+          cityId: { _id: "city1", name: "Tbilisi" },
+          intervalDays: 7,
+          projected: true,
+        },
+      ],
+    });
+
+    const result = await subscriptionApi.occurrences({ from: "2026-10-27", to: "2026-12-07" });
+
+    expect(request).toHaveBeenCalledWith({
+      method: "GET",
+      url: "/subscription/occurrences?from=2026-10-27&to=2026-12-07",
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      _id: "sub1:2026-11-02",
+      projected: true,
+      status: "scheduled",
+      subscription_id: "sub1",
+      booking_date: "2026-11-02",
+      service_name: "Home Cleaning",
+    });
+  });
+
+  test("returns an empty list when the envelope carries none", async () => {
+    request.mockResolvedValueOnce({});
+    expect(await subscriptionApi.occurrences({ from: "2026-10-27", to: "2026-12-07" })).toEqual([]);
+  });
+});

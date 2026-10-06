@@ -27,6 +27,7 @@ const durationMinutesField = () =>
         });
 
 const { phoneField } = require("./phone.validation");
+const { personalIdField } = require("./personalId.validation");
 
 const objectId = z
     .string()
@@ -83,6 +84,12 @@ const createBookingSchema = z.object({
     // request nor the account carries a number (an account can be created
     // without one — the crew still has to be able to ring someone).
     customerPhone: phoneField().optional(),
+
+    // Same posture as the phone: optional in the SCHEMA, required for a
+    // customer booking — buildValidatedBookingDraft falls back to
+    // req.user.personalId and refuses when neither carries one. An admin
+    // recording a walk-in may omit it.
+    customerPersonalId: personalIdField().optional(),
 
     streetName: z
         .string()
@@ -182,6 +189,9 @@ const createBookingSchema = z.object({
 // is designed, cancel and re-book.
 const editBookingSchema = z.object({
     customerPhone: phoneField().optional(),
+
+    // An admin may correct a mistyped number; blanking it is not offered.
+    customerPersonalId: personalIdField().optional(),
 
     streetName: z
         .string()

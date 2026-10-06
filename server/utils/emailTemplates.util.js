@@ -384,6 +384,9 @@ const newBookingAlertEmail = ({
     customerName,
     customerEmail,
     customerPhone,
+    // Shown to the team only — the customer's confirmation email never repeats
+    // it (they know their own number, and receipts get forwarded).
+    customerPersonalId,
     bookingDate,
     bookingTime,
     durationMinutes,
@@ -453,6 +456,7 @@ const newBookingAlertEmail = ({
             ${row("Customer", escapeHtml(customerName))}
             ${customerEmail ? row("Email", `<a href="mailto:${safeEmail}" style="color:${COLORS.brand};">${safeEmail}</a>`) : ""}
             ${customerPhone ? row("Phone", `<a href="tel:${safePhone}" style="color:${COLORS.brand};">${safePhone}</a>`) : ""}
+            ${customerPersonalId ? row("Personal ID", `<span style="font-family:monospace; font-size:13px;">${escapeHtml(customerPersonalId)}</span>`) : ""}
         </table>
 
         ${notes ? `
@@ -477,6 +481,7 @@ const newBookingAlertEmail = ({
         `\nCustomer:  ${customerName}\n` +
         (customerEmail ? `Email:     ${customerEmail}\n` : "") +
         (customerPhone ? `Phone:     ${customerPhone}\n` : "") +
+        (customerPersonalId ? `ID:        ${customerPersonalId}\n` : "") +
         (notes ? `\nNotes:\n${notes}\n` : "") +
         (adminUrl ? `\nAdmin panel: ${adminUrl}\n` : "");
 

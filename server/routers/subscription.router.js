@@ -7,6 +7,7 @@ const {
   cancelMySubscription,
   updateMySubscriptionCard,
   getSubscriptions,
+  getSubscriptionOccurrences,
   getSubscriptionById,
   adminPauseSubscription,
   adminResumeSubscription,
@@ -41,6 +42,8 @@ subscriptionRouter.patch(
 // Admin collection/detail and action routes. Action literals are declared
 // before the dynamic GET /:id route and auth always precedes restrictTo.
 subscriptionRouter.get('/', protect, restrictTo('admin'), getSubscriptions);
+// Literal route, declared before GET /:id so "occurrences" is never read as an id.
+subscriptionRouter.get('/occurrences', protect, restrictTo('admin'), getSubscriptionOccurrences);
 subscriptionRouter.patch(
   '/:id/admin-pause',
   protect,

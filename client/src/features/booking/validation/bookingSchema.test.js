@@ -25,6 +25,7 @@ const validValues = {
   name: "Mario Rossi",
   email: "mario@example.com",
   phone: "+39 331 234 5678",
+  personalId: "01001012345",
   notes: "",
 };
 
@@ -174,5 +175,31 @@ describe("bookingSchema", () => {
   test("the defaults fail validation until the wizard is filled in", () => {
     // Defaults intentionally start empty; submission must be impossible.
     expect(bookingSchema.safeParse(bookingDefaults).success).toBe(false);
+  });
+});
+
+// Optional on the account, required here: the reservation carries the
+// customer's personal ID number and the API refuses one without it.
+describe("bookingSchema — personal ID", () => {
+  test("requires a personal ID number", () => {
+    const missing = bookingSchema.safeParse({ ...validValues, personalId: "" });
+    expect(missing.success).toBe(false);
+    expect(errorsOf(missing).personalId).toMatch(/personal id/i);
+  });
+
+  test("accepts the national formats of the markets this product sells in, however spaced", () => {
+    expect(bookingSchema.safeParse({ ...validValues, personalId: "01001012345" }).success).toBe(true);
+    expect(bookingSchema.safeParse({ ...validValues, personalId: "rss mra 85m01 h501u" }).success).toBe(true);
+    expect(bookingSchema.safeParse({ ...validValues, personalId: "AK-123456" }).success).toBe(true);
+  });
+
+  test("rejects symbols and lengths outside 5–20", () => {
+    expect(bookingSchema.safeParse({ ...validValues, personalId: "1234" }).success).toBe(false);
+    expect(bookingSchema.safeParse({ ...validValues, personalId: "ID#12345" }).success).toBe(false);
+    expect(bookingSchema.safeParse({ ...validValues, personalId: "A".repeat(21) }).success).toBe(false);
+  });
+
+  test("has an empty personal ID in the defaults", () => {
+    expect(bookingDefaults.personalId).toBe("");
   });
 });

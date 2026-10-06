@@ -21,6 +21,9 @@ export function toBookingPayload(values) {
     // account (a user can't book under someone else's identity) and rejects them
     // as unknown fields. Phone is allowed (falls back to the account's number).
     customerPhone: values.phone,
+    // Same posture as the phone: the server falls back to the account's value
+    // and refuses the booking when neither carries one.
+    customerPersonalId: values.personalId,
     streetName: values.street,
     houseNumber: values.houseNumber,
     propertySize: String(values.propertySize),

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isValidPhone } from "@/lib/phone";
+import { isValidPersonalId } from "@/lib/personalId";
 import { todayDateString } from "../utils/recurrence";
 import {
   MAX_DURATION_HOURS_PART,
@@ -104,6 +105,13 @@ export const bookingSchema = z.object({
     .string()
     .trim()
     .refine(isValidPhone, "Enter a valid phone number, including the country prefix"),
+  // Same posture as the phone: optional on the account, required on the
+  // booking — the API refuses a booking without one (lib/personalId.js
+  // mirrors server/utils/personalId.util.js).
+  personalId: z
+    .string()
+    .trim()
+    .refine(isValidPersonalId, "Enter your personal ID number (5–20 letters or digits)"),
   notes: z.string().trim().max(500, "Keep notes under 500 characters").optional(),
 }).superRefine((values, ctx) => {
   // The combined duration, checked once the two halves are individually sane.
@@ -149,5 +157,6 @@ export const bookingDefaults = {
   name: "",
   email: "",
   phone: "",
+  personalId: "",
   notes: "",
 };

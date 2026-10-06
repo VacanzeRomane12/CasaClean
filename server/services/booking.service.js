@@ -407,12 +407,18 @@ const buildValidatedBookingDraft = async (payload, user) => {
   const customerName = user.fullname;
   const customerEmail = user.email;
   const customerPhone = payload.customerPhone || user.phone;
+  // The identification number has the phone's posture: offered on the
+  // account, required here, with the request winning over the profile.
+  const customerPersonalId = payload.customerPersonalId || user.personalId;
 
   if (!customerName || !customerEmail) {
     throw new AppError("Your account is missing a name or email — please update your profile.", 400);
   }
   if (!customerPhone) {
     throw new AppError("Please add a phone number to your profile or provide one for this booking!", 400);
+  }
+  if (!customerPersonalId) {
+    throw new AppError("Please add your personal ID number to your profile or provide one for this booking!", 400);
   }
 
   const { service, city } = await resolveServiceAndCity(serviceId, cityId);
@@ -461,6 +467,7 @@ const buildValidatedBookingDraft = async (payload, user) => {
     customerName,
     customerEmail,
     customerPhone,
+    customerPersonalId,
     streetName,
     houseNumber,
     propertySize,

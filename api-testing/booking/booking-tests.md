@@ -32,7 +32,7 @@ A booking request body looks like this:
   "bookingTime": "14:00",
   "durationMinutes": 85,
   "cleaners": 2,
-  "totalAmount": 120,
+  "customerPersonalId": "01001012345",
   "notes": "Please bring eco products",
   "specialRequests": ["PASTE_SPECIAL_REQUEST_ID"],
   "supplies": ["vacuum", "mop"]
@@ -47,6 +47,14 @@ Important things to know:
   you must send `customerPhone` in the body. It must carry the country prefix
   (`+39 331 234 5678`, `+995 555 12 34 56`); spacing and dashes are normalised
   away, a bare `3312345678` is rejected as ambiguous.
+- **Personal ID:** same posture as the phone. If your account has `personalId`
+  saved (profile → *Personal ID number*, `PATCH /auth/me`), it is used
+  automatically; otherwise send `customerPersonalId`. It is 5–20 letters or
+  digits after normalisation (uppercase, spaces/dots/dashes removed — e.g. a
+  Georgian `01001012345` or an Italian `RSSMRA85M01H501U`). The customer
+  checkout (`POST /payment/booking/intent`) refuses a booking without one; the
+  admin manual path accepts a walk-in without it. It is returned on every
+  booking as `customerPersonalId` and shown in the admin panel.
 - **Required fields:** `serviceId`, `cityId`, `streetName`, `houseNumber`,
   `propertySize`, `doorbellName`, `bookingDate`, `bookingTime`,
   `durationMinutes`, `cleaners`. Missing any of these gives a 400.

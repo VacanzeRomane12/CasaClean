@@ -214,7 +214,7 @@ const createBooking = catchAsync(async (req, res, next) => {
       // The tax fields come along because the booking is priced against the
       // LINKED customer's VAT status, not the admin's.
       const linked = await User.findById(req.body.userId)
-        .select('fullname email phone customerType vatNumber vatStatus companyName');
+        .select('fullname email phone personalId customerType vatNumber vatStatus companyName');
       if (!linked) {
         return next(new AppError("The linked customer account does not exist!", 400));
       }
@@ -235,6 +235,12 @@ const createBooking = catchAsync(async (req, res, next) => {
   const customerPhone = onBehalf
     ? (req.body.customerPhone || profile?.phone)
     : (req.body.customerPhone || req.user.phone);
+  // Resolved like the phone but never refused: this admin-only path is the
+  // escape hatch for recording a walk-in, and the number may not be at hand.
+  // The customer self-service path (buildValidatedBookingDraft) requires it.
+  const customerPersonalId = onBehalf
+    ? (req.body.customerPersonalId || profile?.personalId)
+    : (req.body.customerPersonalId || req.user.personalId);
 
   // Booking-specific fields — the only things the wizard actually collects.
   const {
@@ -326,6 +332,7 @@ const createBooking = catchAsync(async (req, res, next) => {
     customerName,
     customerEmail,
     customerPhone,
+    ...(customerPersonalId ? { customerPersonalId } : {}),
     streetName,
     houseNumber,
     propertySize,
@@ -382,7 +389,7 @@ const editBooking = catchAsync(async (req, res, next) => {
   const editableFields = [
     'status', 'bookingDate', 'bookingTime', 'durationMinutes', 'cleaners',
     'streetName', 'houseNumber', 'propertySize',
-    'doorbellName', 'customerPhone', 'notes', 'supplies'
+    'doorbellName', 'customerPhone', 'customerPersonalId', 'notes', 'supplies'
   ];
 
   const updates = {};

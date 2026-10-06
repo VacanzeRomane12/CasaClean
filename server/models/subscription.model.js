@@ -36,6 +36,10 @@ const subscriptionSchema = new mongoose.Schema({
   customerName: { type: String, required: true, trim: true },
   customerEmail: { type: String, required: true, trim: true, lowercase: true },
   customerPhone: { type: String, required: true, trim: true },
+  // Snapshotted like the phone; absent on plans created before the field
+  // existed, in which case each cycle falls back to the customer's current
+  // profile value (createBookingFromSubscription).
+  customerPersonalId: { type: String, trim: true },
   streetName: { type: String, required: true, trim: true },
   houseNumber: { type: String, required: true, trim: true },
   propertySize: { type: String, required: true, trim: true },
@@ -127,6 +131,10 @@ subscriptionSchema.index({ status: 1, nextChargeAt: 1 });
 // can't serve (its second key is nextChargeAt) — that combination was falling
 // back to an in-memory sort of every matching subscription.
 subscriptionSchema.index({ status: 1, createdAt: -1 });
+// The admin calendar projects upcoming visits from every ACTIVE plan whose next
+// uncharged date falls on or before the end of the visible range
+// (GET /subscription/occurrences) — a status + nextServiceDate range scan.
+subscriptionSchema.index({ status: 1, nextServiceDate: 1 });
 subscriptionSchema.index({ firstPaymentIntentId: 1 }, { unique: true, sparse: true });
 
 const Subscription = mongoose.model('Subscription', subscriptionSchema);

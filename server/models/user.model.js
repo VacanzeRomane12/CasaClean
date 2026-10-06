@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
 const { normalizePhone, isValidPhone, PHONE_ERROR_MESSAGE } = require('../utils/phone.util');
+const { normalizePersonalId, isValidPersonalId, PERSONAL_ID_ERROR_MESSAGE } = require('../utils/personalId.util');
 
 // How long an email-verification link stays valid (in hours).
 const VERIFICATION_TOKEN_TTL_HOURS = 24;
@@ -56,6 +57,24 @@ const userSchema = new mongoose.Schema({
         // would collide and be unable to sign up.
         unique: true,
         sparse: true
+    },
+    // Personal identification number. Optional on the ACCOUNT, required on the
+    // BOOKING — exactly the phone's posture: the booking draft falls back to this
+    // field and refuses the booking when it is empty too. The setter normalises
+    // and maps a blank to `undefined` so a cleared field is absent rather than
+    // "". Deliberately NOT unique: nothing keys on it, and a unique index would
+    // turn an admin typo into a lock-out for the next customer.
+    personalId: {
+        type: String,
+        trim: true,
+        set: (value) => {
+            const normalized = normalizePersonalId(value);
+            return normalized === "" ? undefined : normalized;
+        },
+        validate: {
+            validator: (value) => value == null || isValidPersonalId(value),
+            message: PERSONAL_ID_ERROR_MESSAGE
+        }
     },
     password: {
         type: String,

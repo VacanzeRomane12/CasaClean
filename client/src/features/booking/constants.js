@@ -48,7 +48,7 @@ export const BOOKING_STEPS = [
     id: "contact",
     title: "Your details",
     subtitle: "Where to reach you",
-    fields: ["name", "email", "phone", "notes"],
+    fields: ["name", "email", "phone", "personalId", "notes"],
   },
   {
     id: "review",

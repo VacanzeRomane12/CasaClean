@@ -87,6 +87,8 @@ describe('new-booking alerts', () => {
     expect(alert.text).toContain(user.fullname);
     expect(alert.text).toContain(user.email);
     expect(alert.text).toContain(user.phone);
+    expect(alert.text).toContain(user.personalId);
+    expect(alert.html).toContain(user.personalId);
     expect(alert.text).toContain(city.name);
     expect(alert.text).toContain('Via Roma');
     expect(alert.text).toContain('Cat in the flat');

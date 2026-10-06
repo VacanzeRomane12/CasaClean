@@ -16,7 +16,7 @@ import { SITE } from "@/constants/metadata";
  * confermati) prima della pubblicazione.
  */
 
-const UPDATED = "2026-08-11";
+const UPDATED = "2026-10-06";
 
 const identityRows = [
   ["Denominazione", SITE.legalName],
@@ -68,11 +68,11 @@ export const privacy = {
           rows: [
             [
               "Account",
-              "Nome e cognome, indirizzo email, numero di telefono e la password — conservata solo come hash bcrypt, non reversibile. Se accedi con Google conserviamo l'identificativo del tuo account Google e l'immagine del profilo al posto della password.",
+              "Nome e cognome, indirizzo email, numero di telefono, il tuo codice fiscale o numero di documento se scegli di salvarlo per le prenotazioni future, e la password — conservata solo come hash bcrypt, non reversibile. Se accedi con Google conserviamo l'identificativo del tuo account Google e l'immagine del profilo al posto della password.",
             ],
             [
               "Prenotazione",
-              "L'indirizzo dell'intervento (via, numero civico, nome sul citofono), la metratura, la data, l'ora di inizio, la durata, il numero di addetti, gli extra e le attrezzature che selezioni e le note che lasci per chi esegue il servizio.",
+              "Il tuo codice fiscale o numero di documento (obbligatorio per ogni prenotazione e conservato insieme ad essa), l'indirizzo dell'intervento (via, numero civico, nome sul citofono), la metratura, la data, l'ora di inizio, la durata, il numero di addetti, gli extra e le attrezzature che selezioni e le note che lasci per chi esegue il servizio.",
             ],
             [
               "Pagamento",

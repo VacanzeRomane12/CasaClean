@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   User,
   Mail,
+  IdCard,
   ShieldCheck,
   CalendarDays,
   CalendarClock,
@@ -217,6 +218,7 @@ const ProfilePage = () => {
   const [form, setForm] = useState({
     fullname: user?.fullname || "",
     phone: user?.phone || "",
+    personalId: user?.personalId || "",
   });
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorMsg, setErrorMsg] = useState("");
@@ -366,7 +368,9 @@ const ProfilePage = () => {
   if (!user) return null;
 
   const dirty =
-    form.fullname !== (user.fullname || "") || form.phone !== (user.phone || "");
+    form.fullname !== (user.fullname || "") ||
+    form.phone !== (user.phone || "") ||
+    form.personalId !== (user.personalId || "");
 
   // PhoneInput hands back a value, not an event (it drives two controls), so the
   // setter is split from the event adapter the plain inputs use.
@@ -386,11 +390,20 @@ const ProfilePage = () => {
         fullname: form.fullname.trim(),
         // "" is sent deliberately: it clears the stored number.
         phone: form.phone.trim(),
+        // Same semantics as the phone.
+        personalId: form.personalId.trim(),
       });
       const updated = res?.user ?? res ?? form;
       // A cleared number comes back absent, so fall back to "" rather than
       // leaving the previous value in the auth context.
-      updateUser({ fullname: updated.fullname, phone: updated.phone ?? "" });
+      updateUser({
+        fullname: updated.fullname,
+        phone: updated.phone ?? "",
+        personalId: updated.personalId ?? "",
+      });
+      // The server normalises the ID (uppercase, no separators); show what it
+      // stored rather than what was typed.
+      setForm((f) => ({ ...f, personalId: updated.personalId ?? "" }));
       setStatus("saved");
     } catch (err) {
       setErrorMsg(err?.message || t("auth.errors.generic"));
@@ -531,6 +544,18 @@ const ProfilePage = () => {
                         onChange={(next) => onChangeValue("phone", next)}
                         placeholder={t("profile.phonePlaceholder")}
                         hint={t("profile.phoneHint")}
+                      />
+                      {/* Same posture as the phone: optional here, required by
+                          the booking wizard, which pre-fills it from the profile. */}
+                      <Input
+                        label={`${t("profile.personalId")} (${t("common.optional")})`}
+                        leftIcon={IdCard}
+                        value={form.personalId}
+                        onChange={onChange("personalId")}
+                        placeholder={t("profile.personalIdPlaceholder")}
+                        hint={t("profile.personalIdHint")}
+                        autoComplete="off"
+                        autoCapitalize="characters"
                       />
 
                       {status === "saved" && (

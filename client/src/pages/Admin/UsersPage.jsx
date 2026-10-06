@@ -47,6 +47,13 @@ export default function UsersPage() {
         label: t("admin.users.field.phone"),
         hint: t("admin.users.field.phoneHint"),
       },
+      // Same posture as the phone: offered on the account, required by the
+      // booking (which falls back to it).
+      {
+        name: "personalId",
+        label: t("admin.users.field.personalId"),
+        hint: t("admin.users.field.personalIdHint"),
+      },
       {
         name: "password",
         label: t("admin.users.field.password"),

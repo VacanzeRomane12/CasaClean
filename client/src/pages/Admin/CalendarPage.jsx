@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { AlertCircle, CalendarDays, ChevronLeft, ChevronRight, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
@@ -9,11 +11,17 @@ import {
   PageHeader,
   BOOKING_STATUS_META,
   PAYMENT_STATUS_META,
+  PROJECTED_STATUS,
+  PROJECTED_STATUS_META,
   STATUS_COLORS,
+  mergeBookingsWithOccurrences,
   useCollection,
 } from "@/features/admin";
+import { subscriptionApi } from "@/features/admin/api/adminApi";
 import { useTranslation } from "@/i18n";
 import { formatDuration } from "@/features/booking";
+import { intervalLabel } from "@/features/booking/utils/recurrence";
+import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/cn";
 
 /*
@@ -24,6 +32,15 @@ import { cn } from "@/lib/cn";
  * opens the booking detail, and crowded days expose a "+N" day list. The grid
  * is Monday-first (European market) and all labels come from Intl so every
  * supported locale renders its own month/weekday names.
+ *
+ * Two sources feed the grid. Real bookings come from the shared bookings
+ * collection (one-off visits and the charged cycles of recurring plans). The
+ * FUTURE visits of a recurring plan exist nowhere as documents — a cycle's
+ * booking is created only when it is charged, the day before — so for the
+ * visible range the page also asks GET /subscription/occurrences, which
+ * projects them from each active plan's rule. Those render as dashed
+ * "scheduled" chips and are merged with a per-plan-per-day guard so a visit is
+ * never shown twice (features/admin/utils/calendarOccurrences.js).
  */
 
 const eur = (n) =>
@@ -64,15 +81,19 @@ function DetailRow({ label, value }) {
   );
 }
 
-/** One booking entry inside a day cell or the day modal. */
-function BookingChip({ booking, onClick, detailed }) {
+/** One booking entry inside a day cell or the day modal. A projected visit of
+ * a recurring plan is drawn dashed, with a repeat mark, so it reads as "coming"
+ * rather than "booked". */
+function BookingChip({ booking, onClick, detailed, projectedLabel }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      title={booking.projected ? projectedLabel : undefined}
       className={cn(
         "flex w-full items-center gap-1.5 rounded-lg px-1.5 py-1 text-left text-caption font-medium text-ink-700 transition-colors hover:bg-ink-100",
-        detailed && "gap-2.5 rounded-xl px-3 py-2.5 text-body-sm"
+        detailed && "gap-2.5 rounded-xl px-3 py-2.5 text-body-sm",
+        booking.projected && "border border-dashed border-ink-300 text-ink-600"
       )}
     >
       <span
@@ -82,6 +103,9 @@ function BookingChip({ booking, onClick, detailed }) {
       />
       <span className="shrink-0 tabular-nums text-ink-500">{booking.booking_time}</span>
       <span className="truncate">{booking.customer_name}</span>
+      {booking.projected && (
+        <Repeat className="size-3 shrink-0 text-ink-400" aria-label={projectedLabel} />
+      )}
       {detailed && (
         <span className="ml-auto shrink-0 text-body-sm text-ink-400">{booking.service_name}</span>
       )}
@@ -116,6 +140,25 @@ export default function CalendarPage() {
   const [dayOpen, setDayOpen] = useState(null); // day key whose full list is open
   const [viewing, setViewing] = useState(null);
 
+  const cells = useMemo(
+    () => buildMonthCells(cursor.year, cursor.month),
+    [cursor]
+  );
+
+  // Projected recurring visits for exactly the visible grid (padding days
+  // included). Re-fetched per month and kept briefly fresh so a plan paused or
+  // cancelled elsewhere disappears on the next navigation. A failure here
+  // leaves the real bookings untouched — the grid never goes blank because the
+  // projection could not be loaded.
+  const range = { from: cells[0].key, to: cells[cells.length - 1].key };
+  const occurrencesQuery = useQuery({
+    queryKey: ["admin", "occurrences", range.from, range.to],
+    queryFn: () => subscriptionApi.occurrences(range),
+    staleTime: 30_000,
+    retry: 1,
+  });
+  const occurrences = useMemo(() => occurrencesQuery.data ?? [], [occurrencesQuery.data]);
+
   // Resolve service/city ids to names, same as the Bookings page.
   const cityNameById = useMemo(
     () => Object.fromEntries(cities.map((c) => [String(c._id), c.name])),
@@ -127,19 +170,23 @@ export default function CalendarPage() {
   );
 
   const statusOptions = useMemo(
-    () =>
-      Object.keys(BOOKING_STATUS_META).map((value) => ({
+    () => [
+      ...Object.keys(BOOKING_STATUS_META).map((value) => ({
         value,
         label: t(BOOKING_STATUS_META[value].labelKey),
       })),
+      { value: PROJECTED_STATUS, label: t(PROJECTED_STATUS_META.labelKey) },
+    ],
     [t]
   );
 
   // bookingDate is stored as a "YYYY-MM-DD" string, so bookings group straight
-  // onto the cell keys with no timezone maths.
+  // onto the cell keys with no timezone maths. Real bookings and projected
+  // visits are merged first so a charged cycle is never doubled by its own
+  // projection.
   const bookingsByDay = useMemo(() => {
     const map = {};
-    for (const b of items) {
+    for (const b of mergeBookingsWithOccurrences(items, occurrences)) {
       if (statusFilter && b.status !== statusFilter) continue;
       if (!b.booking_date) continue;
       (map[b.booking_date] ??= []).push({
@@ -152,21 +199,20 @@ export default function CalendarPage() {
       list.sort((a, b) => String(a.booking_time).localeCompare(String(b.booking_time)));
     }
     return map;
-  }, [items, statusFilter, serviceNameById, cityNameById]);
+  }, [items, occurrences, statusFilter, serviceNameById, cityNameById]);
 
-  const cells = useMemo(
-    () => buildMonthCells(cursor.year, cursor.month),
-    [cursor]
-  );
-
-  const monthCount = useMemo(
-    () =>
-      cells.reduce(
-        (sum, c) => (c.inMonth ? sum + (bookingsByDay[c.key]?.length || 0) : sum),
-        0
-      ),
-    [cells, bookingsByDay]
-  );
+  const { monthCount, projectedCount } = useMemo(() => {
+    let real = 0;
+    let projected = 0;
+    for (const c of cells) {
+      if (!c.inMonth) continue;
+      for (const b of bookingsByDay[c.key] || []) {
+        if (b.projected) projected += 1;
+        else real += 1;
+      }
+    }
+    return { monthCount: real, projectedCount: projected };
+  }, [cells, bookingsByDay]);
 
   // Locale-aware labels straight from Intl (codes in config.js are valid BCP47).
   const monthLabel = useMemo(
@@ -204,6 +250,7 @@ export default function CalendarPage() {
   };
 
   const dayBookings = dayOpen ? bookingsByDay[dayOpen] || [] : [];
+  const projectedLabel = t("admin.calendar.projected");
 
   return (
     <div className="space-y-8">
@@ -244,6 +291,9 @@ export default function CalendarPage() {
               {loading
                 ? t("admin.table.loading")
                 : t("admin.calendar.monthCount", { count: monthCount })}
+              {!loading && projectedCount > 0 && (
+                <> · {t("admin.calendar.projectedCount", { count: projectedCount })}</>
+              )}
             </p>
           </div>
         </div>
@@ -261,6 +311,16 @@ export default function CalendarPage() {
           />
         </div>
       </div>
+
+      {occurrencesQuery.isError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-body-sm text-red-700"
+        >
+          <AlertCircle className="mt-0.5 size-4.5 shrink-0" />
+          {t("admin.calendar.projectedError")}
+        </div>
+      )}
 
       {/* Month grid — scrolls horizontally on narrow screens instead of crushing */}
       <div className="overflow-x-auto rounded-2xl border border-ink-100 bg-surface">
@@ -312,7 +372,12 @@ export default function CalendarPage() {
                       ))}
                     {!loading &&
                       dayList.slice(0, MAX_CHIPS).map((b) => (
-                        <BookingChip key={b._id} booking={b} onClick={() => setViewing(b)} />
+                        <BookingChip
+                          key={b._id}
+                          booking={b}
+                          projectedLabel={projectedLabel}
+                          onClick={() => setViewing(b)}
+                        />
                       ))}
                     {!loading && overflow > 0 && (
                       <button
@@ -331,7 +396,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Status legend (same colours as the bookings map) */}
+      {/* Status legend (same colours as the bookings map, plus projected visits) */}
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         {Object.entries(BOOKING_STATUS_META).map(([status, meta]) => (
           <span key={status} className="flex items-center gap-2 text-body-sm text-ink-600">
@@ -343,6 +408,14 @@ export default function CalendarPage() {
             {t(meta.labelKey)}
           </span>
         ))}
+        <span className="flex items-center gap-2 text-body-sm text-ink-600">
+          <span
+            className="size-2.5 rounded-full"
+            style={{ backgroundColor: STATUS_COLORS[PROJECTED_STATUS] }}
+            aria-hidden="true"
+          />
+          {t(PROJECTED_STATUS_META.labelKey)}
+        </span>
       </div>
 
       {/* Full list for a crowded day */}
@@ -358,6 +431,7 @@ export default function CalendarPage() {
               key={b._id}
               booking={b}
               detailed
+              projectedLabel={projectedLabel}
               onClick={() => {
                 setDayOpen(null);
                 setViewing(b);
@@ -367,38 +441,67 @@ export default function CalendarPage() {
         </div>
       </Modal>
 
-      {/* Booking detail — same layout as the Bookings page view dialog */}
+      {/* Booking detail — same layout as the Bookings page view dialog. A
+          projected visit has no document, price or payment yet, so it shows the
+          plan's cadence instead of the money badges. */}
       <Modal
         open={Boolean(viewing)}
         onClose={() => setViewing(null)}
-        title={t("admin.bookings.detailsTitle")}
-        description={viewing?.reference}
+        title={viewing?.projected ? projectedLabel : t("admin.bookings.detailsTitle")}
+        description={viewing?.projected ? undefined : viewing?.reference}
         size="lg"
       >
         {viewing && (
           <div className="space-y-1">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={BOOKING_STATUS_META[viewing.status]?.variant}>
-                  {BOOKING_STATUS_META[viewing.status] &&
-                    t(BOOKING_STATUS_META[viewing.status].labelKey)}
-                </Badge>
-                {(() => {
-                  const pm = PAYMENT_STATUS_META[viewing.payment_status] || PAYMENT_STATUS_META.unpaid;
-                  return (
-                    <Badge variant={pm.variant} size="sm">
-                      {t(pm.labelKey)}
+                {viewing.projected ? (
+                  <Badge variant={PROJECTED_STATUS_META.variant}>
+                    {t(PROJECTED_STATUS_META.labelKey)}
+                  </Badge>
+                ) : (
+                  <>
+                    <Badge variant={BOOKING_STATUS_META[viewing.status]?.variant}>
+                      {BOOKING_STATUS_META[viewing.status] &&
+                        t(BOOKING_STATUS_META[viewing.status].labelKey)}
                     </Badge>
-                  );
-                })()}
+                    {(() => {
+                      const pm = PAYMENT_STATUS_META[viewing.payment_status] || PAYMENT_STATUS_META.unpaid;
+                      return (
+                        <Badge variant={pm.variant} size="sm">
+                          {t(pm.labelKey)}
+                        </Badge>
+                      );
+                    })()}
+                  </>
+                )}
               </div>
-              <span className="text-heading-sm font-bold text-ink-900">
-                {eur(viewing.total_amount)}
-              </span>
+              {!viewing.projected && (
+                <span className="text-heading-sm font-bold text-ink-900">
+                  {eur(viewing.total_amount)}
+                </span>
+              )}
             </div>
+            {viewing.projected && (
+              <div className="mb-3 flex flex-col gap-2 rounded-xl bg-ink-50 p-3.5 text-body-sm text-ink-600 xs:flex-row xs:items-start xs:justify-between">
+                <span className="flex items-start gap-2">
+                  <Repeat className="mt-0.5 size-4 shrink-0 text-ink-400" aria-hidden="true" />
+                  {t("admin.calendar.projectedHint", {
+                    interval: intervalLabel(t, viewing.interval_days),
+                  })}
+                </span>
+                <Link
+                  to={ROUTES.admin.subscriptions}
+                  className="shrink-0 font-semibold text-brand-600 hover:underline"
+                >
+                  {t("admin.calendar.openPlan")}
+                </Link>
+              </div>
+            )}
             <DetailRow label={t("admin.bookings.detail.customer")} value={viewing.customer_name} />
             <DetailRow label={t("admin.bookings.detail.email")} value={viewing.customer_email} />
             <DetailRow label={t("admin.bookings.detail.phone")} value={viewing.customer_phone} />
+            <DetailRow label={t("admin.bookings.detail.personalId")} value={viewing.customer_personal_id} />
             <DetailRow label={t("admin.bookings.detail.service")} value={viewing.service_name} />
             <DetailRow label={t("admin.bookings.detail.city")} value={viewing.city_name} />
             <DetailRow
@@ -413,10 +516,12 @@ export default function CalendarPage() {
               label={t("admin.bookings.detail.hoursCleaners")}
               value={`${formatDuration(t, viewing.duration_minutes) || "—"} · ${viewing.cleaners || "—"}`}
             />
-            <DetailRow
-              label={t("admin.bookings.detail.workers")}
-              value={viewing.worker_names?.length ? viewing.worker_names.join(", ") : "—"}
-            />
+            {!viewing.projected && (
+              <DetailRow
+                label={t("admin.bookings.detail.workers")}
+                value={viewing.worker_names?.length ? viewing.worker_names.join(", ") : "—"}
+              />
+            )}
             <DetailRow label={t("admin.bookings.detail.notes")} value={viewing.notes} />
           </div>
         )}

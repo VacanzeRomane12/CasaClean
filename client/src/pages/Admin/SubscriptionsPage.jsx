@@ -403,6 +403,7 @@ export default function SubscriptionsPage() {
             </div>
             <DetailRow label={t("admin.subscriptions.detail.customer")} value={detailQuery.data.subscription.customer_name} />
             <DetailRow label={t("admin.subscriptions.detail.email")} value={detailQuery.data.subscription.customer_email} />
+            <DetailRow label={t("admin.subscriptions.detail.personalId")} value={detailQuery.data.subscription.customer_personal_id} />
             <DetailRow label={t("admin.subscriptions.detail.service")} value={detailQuery.data.subscription.service_name} />
             <DetailRow label={t("admin.subscriptions.detail.city")} value={detailQuery.data.subscription.city_name} />
             <DetailRow label={t("admin.subscriptions.detail.interval")} value={intervalLabel(t, detailQuery.data.subscription.interval_days)} />

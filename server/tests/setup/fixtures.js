@@ -21,6 +21,10 @@ const createUser = (overrides = {}) => {
         fullname: `Test User ${n}`,
         email: `user${n}@test.casaclean.local`,
         phone: `+3933100${String(n).padStart(5, "0")}`,
+        // A booking requires a personal ID number (falling back to the profile),
+        // so every fixture user carries one and the existing booking/intent
+        // suites keep passing. Suites exercising the rule override it with "".
+        personalId: `010010${String(n).padStart(5, "0")}`,
         password: "password123",
         isVerified: true,
         ...overrides

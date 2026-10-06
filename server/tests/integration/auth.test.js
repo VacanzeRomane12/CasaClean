@@ -589,3 +589,37 @@ describe("DELETE /api/v1/auth/me", () => {
         expect(kept.user).toBeUndefined();
     });
 });
+
+describe("profile self-service - personal ID", () => {
+    test("PATCH /me stores a normalised personal ID and GET /me returns it", async () => {
+        const user = await createUser({ personalId: "" });
+        const res = await api.patch("/api/v1/auth/me")
+            .set("Cookie", cookieFor(user))
+            .send({ personalId: "rss mra-85m01 h501u" });
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.personalId).toBe("RSSMRA85M01H501U");
+
+        const me = await api.get("/api/v1/auth/me").set("Cookie", cookieFor(user));
+        expect(me.body.data.user.personalId).toBe("RSSMRA85M01H501U");
+    });
+
+    test("PATCH /me clears the personal ID when sent an empty string", async () => {
+        const user = await createUser({ personalId: "01001012345" });
+        const res = await api.patch("/api/v1/auth/me")
+            .set("Cookie", cookieFor(user))
+            .send({ personalId: "" });
+        expect(res.status).toBe(200);
+        expect(res.body.data.user.personalId).toBeUndefined();
+
+        const stored = await User.findById(user._id).lean();
+        expect("personalId" in stored).toBe(false);
+    });
+
+    test("PATCH /me rejects a malformed personal ID", async () => {
+        const user = await createUser();
+        const res = await api.patch("/api/v1/auth/me")
+            .set("Cookie", cookieFor(user))
+            .send({ personalId: "id#1" });
+        expect(res.status).toBe(400);
+    });
+});

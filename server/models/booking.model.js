@@ -56,6 +56,16 @@ const bookingSchema = new mongoose.Schema({
     required: [true, "Customer phone number is required!"],
     trim: true
   },
+  // The customer's personal identification number as it read when the booking
+  // was made (utils/personalId.util.js owns the format). Required for every
+  // customer booking — enforced in buildValidatedBookingDraft, which falls back
+  // to User.personalId — but NOT required here: bookings written before the
+  // field existed carry none and must still save (the cancel path calls
+  // save()), and an admin recording a walk-in may not have the number at hand.
+  customerPersonalId: {
+    type: String,
+    trim: true
+  },
   streetName: {
     type: String,
     required: [true, "Street name is required!"],

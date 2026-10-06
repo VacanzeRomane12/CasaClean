@@ -23,7 +23,7 @@ import { SITE } from "@/constants/metadata";
  * lawyer, and confirm the placeholder company details, before going live.
  */
 
-const UPDATED = "2026-08-11";
+const UPDATED = "2026-10-06";
 
 const identityRows = [
   ["Legal name", SITE.legalName],
@@ -75,11 +75,11 @@ export const privacy = {
           rows: [
             [
               "Account",
-              "Full name, email address, phone number, and your password — stored only as a bcrypt hash we cannot reverse. If you sign in with Google we store your Google account id and profile picture instead of a password.",
+              "Full name, email address, phone number, your personal identification number if you choose to save it for future bookings, and your password — stored only as a bcrypt hash we cannot reverse. If you sign in with Google we store your Google account id and profile picture instead of a password.",
             ],
             [
               "Booking",
-              "The service address (street, house number, doorbell name), property size, date, start time, duration, number of cleaners, any add-ons and cleaning tools you select, and the notes you leave for the cleaner.",
+              "Your personal identification number (national ID or tax code — required for every reservation and kept with it), the service address (street, house number, doorbell name), property size, date, start time, duration, number of cleaners, any add-ons and cleaning tools you select, and the notes you leave for the cleaner.",
             ],
             [
               "Payment",

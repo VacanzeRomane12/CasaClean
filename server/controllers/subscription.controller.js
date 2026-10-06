@@ -14,8 +14,11 @@ const {
 const {
   getChargeLeadDays,
   renderSubscriptionCancelledEmail,
-  sendBestEffortEmail
+  sendBestEffortEmail,
+  projectOccurrences,
+  MAX_OCCURRENCE_SPAN_DAYS
 } = require('../services/subscription.service');
+const { durationInMinutes } = require('../utils/duration.util');
 
 const CUSTOMER_SUBSCRIPTION_FIELDS = [
   'serviceId', 'cityId', 'intervalDays', 'status', 'pausedReason',
@@ -26,7 +29,7 @@ const CUSTOMER_SUBSCRIPTION_FIELDS = [
 
 const ADMIN_SUBSCRIPTION_FIELDS = [
   'user', 'serviceId', 'cityId', 'customerName', 'customerEmail',
-  'customerPhone', 'streetName', 'houseNumber', 'propertySize',
+  'customerPhone', 'customerPersonalId', 'streetName', 'houseNumber', 'propertySize',
   'doorbellName', 'bookingTime', 'durationMinutes', 'hours', 'cleaners', 'notes',
   'specialRequests', 'cleaningTools', 'supplies', 'intervalDays', 'status',
   'pausedReason', 'nextServiceDate', 'nextChargeAt', 'failedAttempts',
@@ -360,6 +363,93 @@ const getSubscriptions = catchAsync(async (req, res) => {
   });
 });
 
+// GET /api/v1/subscription/occurrences?from=YYYY-MM-DD&to=YYYY-MM-DD (admin)
+//
+// The upcoming visits of every ACTIVE plan inside a date range, projected from
+// each plan's rule rather than read from the bookings collection — a cycle's
+// Booking only exists once it has been charged (one day ahead), so this is the
+// only way the admin calendar can show what is coming. Nothing is written:
+// pausing or cancelling a plan removes its projections on the next request,
+// and a charged cycle drops out of the projection because the charge advanced
+// nextServiceDate past it (see projectOccurrences).
+//
+// Both bounds are required and the span is capped so the expansion is bounded
+// no matter what the caller asks for. Dates are "YYYY-MM-DD" strings, compared
+// lexicographically like every other date in this codebase.
+const OCCURRENCE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const getSubscriptionOccurrences = catchAsync(async (req, res, next) => {
+  const from = String(req.query.from || '');
+  const to = String(req.query.to || '');
+
+  if (!OCCURRENCE_DATE_RE.test(from) || !OCCURRENCE_DATE_RE.test(to)) {
+    return next(new AppError('Please provide from and to dates in YYYY-MM-DD format!', 400));
+  }
+  if (to < from) {
+    return next(new AppError('The to date must not be before the from date!', 400));
+  }
+  // Span check through the same local-calendar helper the projection uses.
+  if (addDaysToDateString(from, MAX_OCCURRENCE_SPAN_DAYS) < to) {
+    return next(new AppError(
+      `The date range cannot exceed ${MAX_OCCURRENCE_SPAN_DAYS} days!`,
+      400
+    ));
+  }
+
+  // Only plans that still have a visit to come on or before the end of the
+  // range. Paused and cancelled plans schedule nothing, by definition.
+  const subscriptions = await Subscription.find({
+    status: 'active',
+    nextServiceDate: { $lte: to }
+  })
+    .select(
+      'serviceId cityId customerName customerEmail customerPhone customerPersonalId ' +
+      'streetName houseNumber propertySize doorbellName bookingTime durationMinutes ' +
+      'hours cleaners intervalDays nextServiceDate notes'
+    )
+    .populate('serviceId', 'name')
+    .populate('cityId', 'name')
+    .lean();
+
+  const occurrences = [];
+  for (const subscription of subscriptions) {
+    for (const bookingDate of projectOccurrences(subscription, from, to)) {
+      occurrences.push({
+        subscriptionId: subscription._id,
+        bookingDate,
+        bookingTime: subscription.bookingTime,
+        durationMinutes: durationInMinutes(subscription),
+        cleaners: subscription.cleaners,
+        customerName: subscription.customerName,
+        customerEmail: subscription.customerEmail,
+        customerPhone: subscription.customerPhone,
+        customerPersonalId: subscription.customerPersonalId,
+        streetName: subscription.streetName,
+        houseNumber: subscription.houseNumber,
+        propertySize: subscription.propertySize,
+        doorbellName: subscription.doorbellName,
+        serviceId: subscription.serviceId,
+        cityId: subscription.cityId,
+        intervalDays: subscription.intervalDays,
+        notes: subscription.notes ?? null,
+        // No price: every cycle is re-priced against the live catalogue when it
+        // is charged, so a projected amount would be a promise we don't make.
+        projected: true
+      });
+    }
+  }
+  occurrences.sort((a, b) =>
+    a.bookingDate < b.bookingDate ? -1 : a.bookingDate > b.bookingDate ? 1 : 0
+  );
+
+  res.status(200).json({
+    status: 'success',
+    message: 'Upcoming recurring visits returned successfully!',
+    occurrenceCount: occurrences.length,
+    data: { occurrences }
+  });
+});
+
 // GET /api/v1/subscription/:id (admin)
 const getSubscriptionById = catchAsync(async (req, res, next) => {
   const { id } = req.params;
@@ -477,6 +567,7 @@ module.exports = {
   cancelMySubscription,
   updateMySubscriptionCard,
   getSubscriptions,
+  getSubscriptionOccurrences,
   getSubscriptionById,
   adminPauseSubscription,
   adminResumeSubscription,

@@ -561,7 +561,7 @@
             "url": { "raw": "{{baseUrl}}/booking", "host": ["{{baseUrl}}"], "path": ["booking"] },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"serviceId\": 1,\n  \"cityId\": 1,\n  \"streetName\": \"Rustaveli Ave\",\n  \"houseNumber\": \"12\",\n  \"propertySize\": \"80m2\",\n  \"doorbellName\": \"Smith\",\n  \"bookingDate\": \"2026-07-01\",\n  \"bookingTime\": \"14:00\",\n  \"durationMinutes\": 85,\n  \"cleaners\": 2,\n  \"notes\": \"Please bring eco products\",\n  \"supplies\": [\"vacuum\", \"mop\"]\n}"
+              "raw": "{\n  \"serviceId\": 1,\n  \"cityId\": 1,\n  \"streetName\": \"Rustaveli Ave\",\n  \"houseNumber\": \"12\",\n  \"propertySize\": \"80m2\",\n  \"doorbellName\": \"Smith\",\n  \"bookingDate\": \"2026-07-01\",\n  \"bookingTime\": \"14:00\",\n  \"durationMinutes\": 85,\n  \"cleaners\": 2,\n  \"customerPersonalId\": \"01001012345\",\n  \"notes\": \"Please bring eco products\",\n  \"supplies\": [\"vacuum\", \"mop\"]\n}"
             },
             "description": "Any logged-in user. Create a booking. Contact name/email come from your account (not the body). serviceId/cityId are NUMBERS. Status defaults to 'confirmed'. Expect 201. The new id is saved to bookingId.\n\nTo test add-ons, add a valid enabled id to specialRequests, e.g.: \"specialRequests\": [\"{{specialRequestId}}\"] (create one in the Special Request group first)."
           },

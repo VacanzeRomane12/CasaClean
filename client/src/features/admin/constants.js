@@ -51,6 +51,17 @@ export const BOOKING_STATUS_META = {
   cancelled: { label: "Cancelled", labelKey: "admin.status.cancelled", variant: "outline" },
 };
 
+// UI-only pseudo status for a recurring plan's PROJECTED future visit on the
+// calendar (GET /subscription/occurrences). Not a Booking status: no document
+// exists until the cycle is charged, so it is deliberately kept out of
+// BOOKING_STATUS_META, which drives the status PATCH select.
+export const PROJECTED_STATUS = "scheduled";
+export const PROJECTED_STATUS_META = {
+  label: "Scheduled (recurring)",
+  labelKey: "admin.status.scheduled",
+  variant: "outline",
+};
+
 // Contact-inbox triage badges. These names match the server enum exactly
 // (utils/contact.util.js CONTACT_STATUSES) so a toggle PATCHes a value the API
 // accepts.
@@ -90,4 +101,6 @@ export const STATUS_COLORS = {
   confirmed: "#1dae9f",
   completed: "#16a34a",
   cancelled: "#9aa3b8",
+  // Projected recurring visit (calendar only) — see PROJECTED_STATUS.
+  scheduled: "#7c6ff7",
 };

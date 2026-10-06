@@ -369,14 +369,29 @@ const applyPhoneChange = async (user, phone) => {
     return null;
 };
 
+/**
+ * Apply a personal ID change to a user document — the phone's three cases
+ * (absent = untouched, "" = cleared, otherwise set) without the uniqueness
+ * guard, because the field is deliberately not unique (see user.model.js).
+ *
+ * @param {import("mongoose").Document} user the document being edited
+ * @param {string|undefined} personalId the validated, normalised value from the body
+ */
+const applyPersonalIdChange = (user, personalId) => {
+    if (personalId === undefined) return;
+    // The schema setter maps "" to undefined, which unsets the path.
+    user.personalId = personalId === "" ? undefined : personalId;
+};
+
 // POST /api/v1/auth/users -> admin creates an account directly. Unlike signup,
 // no verification email is sent; the admin decides the role and whether the
 // account is already verified.
 const createUser = catchAsync(async (req, res, next) => {
-    const { fullname, email, phone, password, role, isVerified } = req.body;
+    const { fullname, email, phone, personalId, password, role, isVerified } = req.body;
 
-    // Phone is deliberately not in this list: an account needs an identity and a
-    // credential, and the number is collected when a booking actually needs it.
+    // Phone and personal ID are deliberately not in this list: an account needs
+    // an identity and a credential, and both numbers are collected when a
+    // booking actually needs them.
     if (!fullname || !email || !password) {
         return next(new AppError("Please provide fullname, email and password!", 400));
     }
@@ -403,6 +418,7 @@ const createUser = catchAsync(async (req, res, next) => {
         email,
         password,
         ...(phone ? { phone } : {}),
+        ...(personalId ? { personalId } : {}),
         role: role === "admin" ? "admin" : "user",
         isVerified: Boolean(isVerified)
     });
@@ -421,7 +437,7 @@ const createUser = catchAsync(async (req, res, next) => {
 // fields change; a blank/absent password leaves the existing one untouched.
 const updateUser = catchAsync(async (req, res, next) => {
     const { id } = req.params;
-    const { fullname, email, phone, password, role, isVerified } = req.body;
+    const { fullname, email, phone, personalId, password, role, isVerified } = req.body;
 
     const user = await User.findById(id);
 
@@ -440,6 +456,7 @@ const updateUser = catchAsync(async (req, res, next) => {
 
     const phoneConflict = await applyPhoneChange(user, phone);
     if (phoneConflict) return next(phoneConflict);
+    applyPersonalIdChange(user, personalId);
 
     if (fullname) user.fullname = fullname;
     if (role === "user" || role === "admin") user.role = role;
@@ -654,10 +671,10 @@ const resetPassword = catchAsync(async (req, res, next) => {
 // PATCH /api/v1/auth/me -> a user edits their own profile (name/phone only;
 // email changes would need a re-verification flow and are not supported here).
 const updateMe = catchAsync(async (req, res, next) => {
-    const { fullname, phone } = req.body;
+    const { fullname, phone, personalId } = req.body;
 
-    if (fullname === undefined && phone === undefined) {
-        return next(new AppError("Please provide a field to update (fullname or phone).", 400));
+    if (fullname === undefined && phone === undefined && personalId === undefined) {
+        return next(new AppError("Please provide a field to update (fullname, phone or personalId).", 400));
     }
 
     const user = await User.findById(req.user._id);
@@ -669,6 +686,8 @@ const updateMe = catchAsync(async (req, res, next) => {
     // gone; the next booking will ask for one again.
     const phoneConflict = await applyPhoneChange(user, phone);
     if (phoneConflict) return next(phoneConflict);
+    // Same semantics: "" removes the stored number.
+    applyPersonalIdChange(user, personalId);
 
     if (fullname) user.fullname = fullname;
 

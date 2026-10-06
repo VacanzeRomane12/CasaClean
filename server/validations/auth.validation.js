@@ -2,6 +2,7 @@
 const { z } = require("zod");
 
 const { phoneField } = require("./phone.validation");
+const { personalIdField } = require("./personalId.validation");
 
 /*
  * A phone number is optional on an ACCOUNT.
@@ -12,6 +13,10 @@ const { phoneField } = require("./phone.validation");
  * signup an empty string is simply the same as leaving the field out.
  */
 const accountPhone = phoneField({ allowEmpty: true }).optional();
+
+// The personal ID number has the same posture as the phone: offered on the
+// account, required on the booking (which falls back to it). "" clears it.
+const accountPersonalId = personalIdField({ allowEmpty: true }).optional();
 
 // Schema for validate register request body
 const signupSchema = z.object({
@@ -84,6 +89,8 @@ const createUserSchema = z.object({
 
     phone: accountPhone,
 
+    personalId: accountPersonalId,
+
     password: z
         .string()
         .trim()
@@ -135,7 +142,10 @@ const updateMeSchema = z.object({
         .optional(),
 
     // "" is meaningful here: it removes the stored number (see updateMe).
-    phone: accountPhone
+    phone: accountPhone,
+
+    // Same clearing semantics as the phone.
+    personalId: accountPersonalId
 
 }).strict({ message: "Unknown fields are not allowed!" });
 

@@ -18,6 +18,7 @@
 
 import { apiClient, request, MAIL_REQUEST_TIMEOUT } from "@/services/api";
 import { durationInMinutes } from "@/features/booking/utils/duration";
+import { occurrenceFromApi } from "../utils/calendarOccurrences";
 
 // The server clamps every list endpoint to `limit=100`. The panel used to send
 // exactly that and render whatever came back, so the 101st booking/user/
@@ -459,6 +460,12 @@ const bookingFromApi = (b) => ({
   customer_name: b.customerName,
   customer_email: b.customerEmail,
   customer_phone: b.customerPhone,
+  // Snapshotted at booking time; absent on bookings made before it existed.
+  customer_personal_id: b.customerPersonalId ?? "",
+  // Present on bookings created from a recurring plan (the first visit and
+  // every charged cycle). The calendar uses it to recognise a charged cycle
+  // among the plan's projected occurrences.
+  subscription_id: b.subscriptionId ? String(refId(b.subscriptionId)) : null,
   // The page resolves names from the loaded catalogues by id; the populated name
   // (when present) is the fallback, then the id form.
   service_id: refId(b.serviceId),
@@ -531,6 +538,7 @@ export const bookingApi = {
         customerName: v.customer_name || undefined,
         customerEmail: v.customer_email || undefined,
         customerPhone: v.customer_phone || undefined,
+        customerPersonalId: v.customer_personal_id || undefined,
         serviceId: String(v.service_id).trim(),
         cityId: String(v.city_id).trim(),
         streetName: v.street_name,
@@ -569,6 +577,9 @@ export const bookingApi = {
         propertySize: patch.property_size,
         doorbellName: patch.doorbell_name,
         customerPhone: patch.customer_phone,
+        // The edit schema accepts a correction but not a blank: an empty value
+        // from the form is simply left out.
+        customerPersonalId: patch.customer_personal_id || undefined,
         notes: patch.notes,
         supplies: patch.supplies,
         workers: patch.workers,
@@ -586,6 +597,7 @@ const userFromApi = (u) => ({
   fullname: u.fullname,
   email: u.email,
   phone: u.phone ?? "",
+  personalId: u.personalId ?? "",
   role: u.role,
   isVerified: Boolean(u.isVerified),
   provider: u.provider,
@@ -606,6 +618,7 @@ export const userApi = {
         fullname: v.fullname,
         email: v.email,
         phone: v.phone,
+        personalId: v.personalId,
         password: v.password,
         role: v.role || "user",
         isVerified: Boolean(v.isVerified),
@@ -622,6 +635,7 @@ export const userApi = {
         fullname: patch.fullname,
         email: patch.email,
         phone: patch.phone,
+        personalId: patch.personalId,
         password: patch.password ? patch.password : undefined,
         role: patch.role,
         isVerified: patch.isVerified,
@@ -763,6 +777,7 @@ export const subscriptionFromApi = (s) => ({
   customer_name: s.customerName || s.user?.fullname || "—",
   customer_email: s.customerEmail || s.user?.email || "",
   customer_phone: s.customerPhone || "",
+  customer_personal_id: s.customerPersonalId || "",
   user_id: refId(s.user),
   service_id: refId(s.serviceId),
   service_name: refName(s.serviceId) || "—",
@@ -815,6 +830,19 @@ export const subscriptionApi = {
   pause: (id) => subscriptionAction(id, "admin-pause"),
   resume: (id) => subscriptionAction(id, "admin-resume"),
   cancel: (id) => subscriptionAction(id, "admin-cancel"),
+  /**
+   * The upcoming visits of every active plan inside a date range, projected
+   * server-side from each plan's rule (a cycle's booking only exists once it
+   * has been charged). Both bounds are "YYYY-MM-DD" and the server caps the
+   * span, so the calendar asks for exactly its visible grid.
+   */
+  async occurrences({ from, to }) {
+    const data = await request({
+      method: "GET",
+      url: `/subscription/occurrences?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+    });
+    return (data.occurrences ?? []).map(occurrenceFromApi);
+  },
 };
 
 /* ----------------------------------------------------------------- Registry */

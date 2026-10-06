@@ -177,6 +177,7 @@ export function ReviewStep({ submitError }) {
         <Row label={t("booking.review.name")} value={v.name} />
         <Row label={t("booking.fields.email")} value={v.email} />
         <Row label={t("booking.fields.phone")} value={v.phone} />
+        <Row label={t("booking.fields.personalId")} value={v.personalId} />
         <Row label={t("booking.review.notes")} value={v.notes} />
       </Group>
 

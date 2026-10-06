@@ -21,6 +21,7 @@ const wizardValues = {
   name: "Mario Rossi",
   email: "mario@example.com",
   phone: "+393312345678",
+  personalId: "01001012345",
   notes: "",
   additionalServices: ["sr1"],
   cleaningTools: ["ct1"],
@@ -33,6 +34,7 @@ describe("toBookingPayload", () => {
       serviceId: "svc1",
       cityId: "city1",
       customerPhone: "+393312345678",
+      customerPersonalId: "01001012345",
       streetName: "Via Roma",
       houseNumber: "12",
       propertySize: "80", // stringified for the API

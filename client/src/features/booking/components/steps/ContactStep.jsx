@@ -17,7 +17,8 @@ import { useAuth } from "@/features/admin/context/AuthContext";
  * The phone is REQUIRED here even though an account can exist without one: this
  * is the number the crew rings at the door, and it is the one moment where not
  * having it costs a visit. An account that skipped it at registration simply
- * fills it in here.
+ * fills it in here. The personal ID number has the same posture — optional on
+ * the profile, required for the reservation — and is pre-filled the same way.
  */
 
 export function ContactStep() {
@@ -37,6 +38,7 @@ export function ContactStep() {
     if (!current.name && user.fullname) setValue("name", user.fullname);
     if (!current.email && user.email) setValue("email", user.email);
     if (!current.phone && user.phone) setValue("phone", user.phone);
+    if (!current.personalId && user.personalId) setValue("personalId", user.personalId);
   }, [user, setValue, getValues]);
 
   return (
@@ -77,6 +79,17 @@ export function ContactStep() {
           )}
         />
       </div>
+
+      <Input
+        label={t("booking.contact.personalId")}
+        placeholder={t("booking.contact.personalIdPlaceholder")}
+        hint={t("booking.contact.personalIdHint")}
+        autoComplete="off"
+        autoCapitalize="characters"
+        required
+        error={errors.personalId?.message}
+        {...register("personalId")}
+      />
 
       <Textarea
         label={t("booking.contact.notes")}

@@ -1193,3 +1193,53 @@ describe("DELETE /api/v1/booking/:id", () => {
         expect(await Booking.findById(booking._id)).toBeNull();
     });
 });
+
+// The admin manual path is the escape hatch for walk-ins: the ID is honoured
+// from the body, falls back to the linked account, and is never required.
+describe("POST/PATCH /api/v1/booking - personal ID", () => {
+    test("an admin booking falls back to the linked customer's ID", async () => {
+        const admin = await createAdmin();
+        const customer = await createUser({ personalId: "01001012345" });
+        const service = await createService();
+        const city = await createCity();
+
+        const res = await api.post("/api/v1/booking")
+            .set("Cookie", cookieFor(admin))
+            .send(validBookingBody(service, city, { userId: String(customer._id) }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.booking.customerPersonalId).toBe("01001012345");
+    });
+
+    test("a walk-in booking without an ID is still accepted", async () => {
+        const admin = await createAdmin();
+        const service = await createService();
+        const city = await createCity();
+
+        const res = await api.post("/api/v1/booking")
+            .set("Cookie", cookieFor(admin))
+            .send(validBookingBody(service, city, {
+                customerName: "Walk In",
+                customerEmail: "walkin@test.casaclean.local",
+                customerPhone: "+393312345678"
+            }));
+
+        expect(res.status).toBe(201);
+        expect(res.body.data.booking.customerPersonalId).toBeUndefined();
+    });
+
+    test("an admin can correct the ID on an existing booking", async () => {
+        const admin = await createAdmin();
+        const user = await createUser();
+        const service = await createService();
+        const city = await createCity();
+        const booking = await createPaidBooking(user, service, city, { customerPersonalId: "WRONG123" });
+
+        const res = await api.patch(`/api/v1/booking/${booking._id}`)
+            .set("Cookie", cookieFor(admin))
+            .send({ customerPersonalId: "ak 123456" });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.booking.customerPersonalId).toBe("AK123456");
+    });
+});

@@ -18,5 +18,11 @@ export {
   CONTACT_STATUS_META,
   SUBSCRIPTION_STATUS_META,
   PAYMENT_STATUS_META,
+  PROJECTED_STATUS,
+  PROJECTED_STATUS_META,
   STATUS_COLORS,
 } from "./constants";
+export {
+  mergeBookingsWithOccurrences,
+  occurrenceFromApi,
+} from "./utils/calendarOccurrences";

@@ -172,6 +172,7 @@ const notifyAdminsOfNewBooking = async ({ booking, serviceName = '', recurring =
       customerName: booking.customerName,
       customerEmail: booking.customerEmail,
       customerPhone: booking.customerPhone,
+      customerPersonalId: booking.customerPersonalId,
       bookingDate: booking.bookingDate,
       bookingTime: booking.bookingTime,
       durationMinutes: booking.durationMinutes,

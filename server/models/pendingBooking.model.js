@@ -55,6 +55,10 @@ const pendingBookingSchema = new mongoose.Schema({
     customerName: { type: String, required: true },
     customerEmail: { type: String, required: true },
     customerPhone: { type: String, required: true },
+    // Required outright: drafts are written only by buildValidatedBookingDraft,
+    // which already refuses a booking without one, and they live an hour at
+    // most, so there is no legacy shape to tolerate here.
+    customerPersonalId: { type: String, required: true },
     streetName: { type: String, required: true },
     houseNumber: { type: String, required: true },
     propertySize: { type: String, required: true },

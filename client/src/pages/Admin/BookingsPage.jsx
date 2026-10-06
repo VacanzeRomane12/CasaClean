@@ -154,6 +154,7 @@ export default function BookingsPage() {
     () => [
       { name: "status", label: t("admin.bookings.field.status"), type: "select", options: statusOptions, required: true },
       { name: "customer_phone", label: t("admin.bookings.field.phone") },
+      { name: "customer_personal_id", label: t("admin.bookings.field.personalId"), hint: t("admin.bookings.field.personalIdHint") },
       { name: "booking_date", label: t("admin.bookings.field.date"), type: "date" },
       { name: "booking_time", label: t("admin.bookings.field.time"), type: "time" },
       { name: "street_name", label: t("admin.bookings.field.street") },
@@ -182,6 +183,7 @@ export default function BookingsPage() {
       { name: "customer_name", label: t("admin.bookings.field.customerName") },
       { name: "customer_email", label: t("admin.bookings.field.email"), type: "email" },
       { name: "customer_phone", label: t("admin.bookings.field.phone") },
+      { name: "customer_personal_id", label: t("admin.bookings.field.personalId"), hint: t("admin.bookings.field.personalIdHint") },
       { name: "service_id", label: t("admin.bookings.field.serviceId"), type: "select", options: serviceOptions, placeholder: t("admin.form.selectOption"), required: true },
       { name: "city_id", label: t("admin.bookings.field.cityId"), type: "select", options: cityOptions, placeholder: t("admin.form.selectOption"), required: true },
       { name: "booking_date", label: t("admin.bookings.field.date"), type: "date", required: true },
@@ -407,6 +409,7 @@ export default function BookingsPage() {
             <DetailRow label={t("admin.bookings.detail.customer")} value={viewing.customer_name} />
             <DetailRow label={t("admin.bookings.detail.email")} value={viewing.customer_email} />
             <DetailRow label={t("admin.bookings.detail.phone")} value={viewing.customer_phone} />
+            <DetailRow label={t("admin.bookings.detail.personalId")} value={viewing.customer_personal_id} />
             <DetailRow label={t("admin.bookings.detail.service")} value={viewing.service_name} />
             <DetailRow label={t("admin.bookings.detail.city")} value={viewing.city_name} />
             <DetailRow
