@@ -56,6 +56,10 @@ export function occurrenceFromApi(o) {
     cleaners: o.cleaners,
     notes: o.notes ?? "",
     worker_names: [],
+    // Projections are not priced or itemised; the add-ons and tools of the plan
+    // show on the cycle's booking once it is charged.
+    special_request_items: [],
+    cleaning_tool_items: [],
   };
 }
 

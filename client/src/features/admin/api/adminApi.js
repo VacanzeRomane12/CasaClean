@@ -452,6 +452,14 @@ export const workerApi = {
 const refId = (v) => (v && typeof v === "object" ? v._id : v);
 const refName = (v) => (v && typeof v === "object" ? v.name : null);
 
+// A populated catalogue reference ({ _id, name, price }) or, if a feed ever
+// returns it unpopulated, the bare id. Either way the panel gets something to
+// show rather than an empty row for an item the customer paid for.
+const extraFromApi = (x) =>
+  x && typeof x === "object"
+    ? { _id: x._id, name: x.name || `#${x._id}`, price: x.price ?? null }
+    : { _id: x, name: `#${x}`, price: null };
+
 const bookingFromApi = (b) => ({
   _id: b._id,
   // Short human-readable reference derived from the id (bookings have no
@@ -503,10 +511,14 @@ const bookingFromApi = (b) => ({
   refund_id: b.refundId ?? null,
   notes: b.notes ?? "",
   supplies: b.supplies ?? [],
-  special_requests: b.specialRequests ?? [],
-  // Requested cleaning tools arrive populated ({ _id, name, price }) from the
-  // admin booking feed.
-  cleaning_tools: b.cleaningTools ?? [],
+  // Add-ons and requested cleaning tools arrive populated ({ _id, name, price })
+  // from the admin booking feed. Keep the ids (what a PATCH would send) and the
+  // items the detail dialogs list — the customer chose and paid for these, so
+  // the team must see them.
+  special_requests: (b.specialRequests ?? []).map((x) => extraFromApi(x)._id),
+  special_request_items: (b.specialRequests ?? []).map(extraFromApi),
+  cleaning_tools: (b.cleaningTools ?? []).map((x) => extraFromApi(x)._id),
+  cleaning_tool_items: (b.cleaningTools ?? []).map(extraFromApi),
   // Assigned staff arrive populated as { _id, fullname } objects (or raw ids).
   // Keep the ids for the assignment multiselect and the names for display.
   workers: (b.workers ?? []).map((w) => (w && w._id ? w._id : w)),

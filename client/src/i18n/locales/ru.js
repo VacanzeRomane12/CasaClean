@@ -1188,6 +1188,8 @@ export default {
         hoursCleaners: "Продолжительность / уборщики",
         propertySize: "Площадь",
         workers: "Назначенные работники",
+        specialRequests: "Особые пожелания",
+        cleaningTools: "Инструменты для уборки",
         notes: "Заметки",
       },
       field: {

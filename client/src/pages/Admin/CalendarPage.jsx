@@ -70,6 +70,13 @@ function buildMonthCells(year, month) {
 
 /* Stacks below `xs` so a long value gets the whole dialog width instead of
    overflowing it — see BookingsPage's twin. */
+
+/** "Fridge cleaning (€15.00), Oven (€20.00)" — an add-on or tool list for a detail row. */
+const extrasLabel = (items) =>
+  items?.length
+    ? items.map((i) => (i.price != null ? `${i.name} (${eur(i.price)})` : i.name)).join(", ")
+    : "";
+
 function DetailRow({ label, value }) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-ink-100 py-2.5 last:border-0 xs:flex-row xs:justify-between xs:gap-4">
@@ -517,10 +524,20 @@ export default function CalendarPage() {
               value={`${formatDuration(t, viewing.duration_minutes) || "—"} · ${viewing.cleaners || "—"}`}
             />
             {!viewing.projected && (
-              <DetailRow
-                label={t("admin.bookings.detail.workers")}
-                value={viewing.worker_names?.length ? viewing.worker_names.join(", ") : "—"}
-              />
+              <>
+                <DetailRow
+                  label={t("admin.bookings.detail.specialRequests")}
+                  value={extrasLabel(viewing.special_request_items)}
+                />
+                <DetailRow
+                  label={t("admin.bookings.detail.cleaningTools")}
+                  value={extrasLabel(viewing.cleaning_tool_items)}
+                />
+                <DetailRow
+                  label={t("admin.bookings.detail.workers")}
+                  value={viewing.worker_names?.length ? viewing.worker_names.join(", ") : "—"}
+                />
+              </>
             )}
             <DetailRow label={t("admin.bookings.detail.notes")} value={viewing.notes} />
           </div>

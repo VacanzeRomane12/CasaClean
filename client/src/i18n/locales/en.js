@@ -1208,6 +1208,8 @@ export default {
         hoursCleaners: "Duration / cleaners",
         propertySize: "Property size",
         workers: "Assigned workers",
+        specialRequests: "Special requests",
+        cleaningTools: "Cleaning tools",
         notes: "Notes",
       },
       field: {

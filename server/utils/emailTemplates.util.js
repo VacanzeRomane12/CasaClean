@@ -399,6 +399,10 @@ const newBookingAlertEmail = ({
     propertySize,
     doorbellName,
     notes,
+    // Names of the add-ons and cleaning tools the customer chose — what the
+    // crew has to bring or do beyond the base service.
+    specialRequests = [],
+    cleaningTools = [],
     totalAmount,
     paymentMethod,
     paymentStatus,
@@ -445,6 +449,8 @@ const newBookingAlertEmail = ({
             ${row("Time", escapeHtml(bookingTime || "—"))}
             ${row("Duration", escapeHtml(`${formatDuration(minutes)} · ${cleaners} cleaner(s)`))}
             ${row("Address", escapeHtml(address || "—"))}
+            ${specialRequests.length ? row("Add-ons", escapeHtml(specialRequests.join(", "))) : ""}
+            ${cleaningTools.length ? row("Tools", escapeHtml(cleaningTools.join(", "))) : ""}
             ${propertySize ? row("Property size", `${escapeHtml(propertySize)} m&sup2;`) : ""}
             ${doorbellName ? row("Doorbell", escapeHtml(doorbellName)) : ""}
             ${recurring ? row("Plan", "Recurring service") : ""}
@@ -473,6 +479,8 @@ const newBookingAlertEmail = ({
         `Date:      ${bookingDate || "—"} ${bookingTime || ""}\n` +
         `Duration:  ${formatDuration(minutes)} (${cleaners} cleaner(s))\n` +
         `Address:   ${address || "—"}\n` +
+        (specialRequests.length ? `Add-ons:   ${specialRequests.join(", ")}\n` : "") +
+        (cleaningTools.length ? `Tools:     ${cleaningTools.join(", ")}\n` : "") +
         (propertySize ? `Size:      ${propertySize} m2\n` : "") +
         (doorbellName ? `Doorbell:  ${doorbellName}\n` : "") +
         (recurring ? `Plan:      Recurring service\n` : "") +

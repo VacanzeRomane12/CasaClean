@@ -1186,6 +1186,8 @@ export default {
         hoursCleaners: "Durata / addetti",
         propertySize: "Dimensione immobile",
         workers: "Addetti assegnati",
+        specialRequests: "Richieste speciali",
+        cleaningTools: "Attrezzi per la pulizia",
         notes: "Note",
       },
       field: {

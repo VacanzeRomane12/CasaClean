@@ -23,6 +23,8 @@ const {
   cookieFor,
   createCity,
   createService,
+  createSpecialRequest,
+  createCleaningTool,
   validBookingBody
 } = require('../setup/fixtures');
 
@@ -60,16 +62,20 @@ const payForBooking = async (user, service, city, overrides = {}) => {
 
 describe('new-booking alerts', () => {
   it('emails the admin accounts and the business mailbox in one message', async () => {
-    const [user, admin, city, service] = await Promise.all([
+    const [user, admin, city, service, addon, tool] = await Promise.all([
       createUser(),
       createAdmin(),
       createCity(),
-      createService()
+      createService(),
+      createSpecialRequest(),
+      createCleaningTool()
     ]);
     mockPaidIntent();
 
     const finalize = await payForBooking(user, service, city, {
-      notes: 'Cat in the flat, please keep the door shut.'
+      notes: 'Cat in the flat, please keep the door shut.',
+      specialRequests: [String(addon._id)],
+      cleaningTools: [String(tool._id)]
     });
     expect(finalize.status).toBe(201);
 
@@ -92,6 +98,10 @@ describe('new-booking alerts', () => {
     expect(alert.text).toContain(city.name);
     expect(alert.text).toContain('Via Roma');
     expect(alert.text).toContain('Cat in the flat');
+    // What the customer paid extra for — the crew has to bring or do it.
+    expect(alert.text).toContain(addon.name);
+    expect(alert.text).toContain(tool.name);
+    expect(alert.html).toContain(tool.name);
     expect(alert.text).toContain(finalize.body.data.booking._id);
     // Replying reaches the customer, not our own notification mailbox.
     expect(alert.replyTo).toBe(user.email);
