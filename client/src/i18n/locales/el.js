@@ -1187,6 +1187,8 @@ export default {
         hoursCleaners: "Διάρκεια / καθαριστές",
         propertySize: "Μέγεθος ακινήτου",
         workers: "Ανατεθειμένοι εργαζόμενοι",
+        specialRequests: "Ειδικά αιτήματα",
+        cleaningTools: "Εργαλεία καθαρισμού",
         notes: "Σημειώσεις",
       },
       field: {

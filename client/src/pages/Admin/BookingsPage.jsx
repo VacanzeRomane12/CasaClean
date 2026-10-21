@@ -63,6 +63,13 @@ const changedOnly = (values, original) =>
  * browser will use) or squeezes the value into a one-word-per-line column.
  * Stacked, the value gets the full width; `wrap-break-word` handles the rest.
  */
+
+/** "Fridge cleaning (€15.00), Oven (€20.00)" — an add-on or tool list for a detail row. */
+const extrasLabel = (items) =>
+  items?.length
+    ? items.map((i) => (i.price != null ? `${i.name} (${eur(i.price)})` : i.name)).join(", ")
+    : "";
+
 function DetailRow({ label, value }) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-ink-100 py-2.5 last:border-0 xs:flex-row xs:justify-between xs:gap-4">
@@ -419,6 +426,8 @@ export default function BookingsPage() {
             <DetailRow label={t("admin.bookings.detail.dateTime")} value={`${viewing.booking_date} · ${viewing.booking_time}`} />
             <DetailRow label={t("admin.bookings.detail.hoursCleaners")} value={`${formatDuration(t, viewing.duration_minutes) || "—"} · ${viewing.cleaners || "—"}`} />
             <DetailRow label={t("admin.bookings.detail.propertySize")} value={viewing.property_size ? `${viewing.property_size} m²` : "—"} />
+            <DetailRow label={t("admin.bookings.detail.specialRequests")} value={extrasLabel(viewing.special_request_items)} />
+            <DetailRow label={t("admin.bookings.detail.cleaningTools")} value={extrasLabel(viewing.cleaning_tool_items)} />
             <DetailRow
               label={t("admin.bookings.detail.workers")}
               value={viewing.worker_names?.length ? viewing.worker_names.join(", ") : "—"}

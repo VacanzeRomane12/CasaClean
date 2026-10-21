@@ -24,6 +24,8 @@
 
 const City = require('../models/city.model');
 const Service = require('../models/service.model');
+const SpecialRequest = require('../models/specialRequest.model');
+const CleaningTool = require('../models/cleaningTool.model');
 const User = require('../models/user.model');
 
 const sendEmail = require('../utils/email.util');
@@ -111,7 +113,9 @@ const resolveRecipients = async () => {
 const resolveNames = async (booking, serviceName = '') => {
   const names = {
     serviceName: serviceName || booking.serviceId?.name || '',
-    cityName: booking.cityId?.name || ''
+    cityName: booking.cityId?.name || '',
+    specialRequests: [],
+    cleaningTools: []
   };
 
   try {
@@ -127,6 +131,14 @@ const resolveNames = async (booking, serviceName = '') => {
     ]);
     if (service) names.serviceName = service.name || '';
     if (city) names.cityName = city.name || '';
+
+    // The customer chose and paid for these, so the crew must know to bring
+    // them. The booking usually carries bare ids; a populated document (name
+    // already present) is taken as is.
+    [names.specialRequests, names.cleaningTools] = await Promise.all([
+      resolveExtraNames(SpecialRequest, booking.specialRequests),
+      resolveExtraNames(CleaningTool, booking.cleaningTools)
+    ]);
   } catch (err) {
     // A name is a nicety; the date, address and phone number are what the team
     // actually needs, so send the alert without it.
@@ -134,6 +146,24 @@ const resolveNames = async (booking, serviceName = '') => {
   }
 
   return names;
+};
+
+/**
+ * Names of the add-ons or tools on a booking, in the booking's order. `items`
+ * may mix populated documents and ObjectIds; only the ids are looked up.
+ */
+const resolveExtraNames = async (Model, items) => {
+  if (!Array.isArray(items) || !items.length) return [];
+  const isPopulated = (item) => Boolean(item && typeof item === 'object' && item.name);
+  const idOf = (item) => String((item && item._id) || item);
+  const ids = items.filter((item) => !isPopulated(item)).map(idOf);
+  const found = ids.length
+    ? await Model.find({ _id: { $in: ids } }).select('name').lean()
+    : [];
+  const byId = new Map(found.map((doc) => [String(doc._id), doc.name]));
+  return items
+    .map((item) => (isPopulated(item) ? item.name : byId.get(idOf(item))))
+    .filter(Boolean);
 };
 
 /** Deep link to the panel, when the client origin is configured. */
@@ -185,6 +215,8 @@ const notifyAdminsOfNewBooking = async ({ booking, serviceName = '', recurring =
       propertySize: booking.propertySize,
       doorbellName: booking.doorbellName,
       notes: booking.notes,
+      specialRequests: names.specialRequests,
+      cleaningTools: names.cleaningTools,
       totalAmount: booking.totalAmount,
       paymentMethod: booking.paymentMethod,
       paymentStatus: booking.paymentStatus,

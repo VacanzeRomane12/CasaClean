@@ -253,6 +253,8 @@ const sendCycleReceipt = ({ subscription, booking, serviceName, serviceDate, amo
           cleaners: subscription.cleaners,
           totalAmount: amount,
           notes: subscription.notes,
+          specialRequests: subscription.specialRequests,
+          cleaningTools: subscription.cleaningTools,
           paymentMethod: 'card',
           paymentStatus: 'paid'
         },

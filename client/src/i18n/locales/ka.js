@@ -1177,6 +1177,8 @@ export default {
         hoursCleaners: "ხანგრძლივობა / დამლაგებლები",
         propertySize: "ფართობი",
         workers: "მინიჭებული თანამშრომლები",
+        specialRequests: "სპეციალური მოთხოვნები",
+        cleaningTools: "დასუფთავების ინსტრუმენტები",
         notes: "შენიშვნები",
       },
       field: {
